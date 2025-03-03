@@ -12,8 +12,10 @@ import (
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
+	"github.com/grafana/dskit/kv"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	phlarectx "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -33,9 +35,12 @@ func (m *mockLimits) MaxSeriesPerUser(_ string) int { return m.maxSeriesPerUser 
 func (m *mockLimits) MaxLabelNamesPerSeries(_ string) int { return m.maxLabelNamesPerSeries }
 func (m *mockLimits) MaxLocalSeriesPerUser(_ string) int { return m.maxSeriesPerUser }
 func (m *mockLimits) MaxLocalSeriesPerMetric(_ string) int { return m.maxSeriesPerUser }
+func (m *mockLimits) MaxLocalSeriesPerTenant(_ string) int { return m.maxSeriesPerUser }
 func (m *mockLimits) MaxGlobalSeriesPerUser(_ string) int { return m.maxSeriesPerUser }
 func (m *mockLimits) MaxGlobalSeriesPerMetric(_ string) int { return m.maxSeriesPerUser }
+func (m *mockLimits) MaxGlobalSeriesPerTenant(_ string) int { return m.maxSeriesPerUser }
 func (m *mockLimits) DistributorUsageGroups(_ string) *validation.UsageGroupConfig { return nil }
+func (m *mockLimits) IngestionTenantShardSize(_ string) int { return 1024 * 1024 * 1024 }
 
 func setupTestIngester(b *testing.B) (*Ingester, error) {
 	// Create a temporary directory for the test data
@@ -55,11 +60,14 @@ func setupTestIngester(b *testing.B) (*Ingester, error) {
 
 	// Configure local storage bucket
 	bucketConfig := client.Config{
-		Backend: client.Filesystem,
-		Filesystem: client.FilesystemConfig{
-			Directory: filepath.Join(tmpDir, "storage"),
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: "filesystem",
+			Filesystem: filesystem.Config{
+				Directory: filepath.Join(tmpDir, "storage"),
+			},
 		},
 	}
+
 	storageBucket, err := client.NewBucket(ctx, bucketConfig, "storage")
 	if err != nil {
 		b.Fatal(err)
@@ -69,7 +77,7 @@ func setupTestIngester(b *testing.B) (*Ingester, error) {
 	cfg := Config{
 		LifecyclerConfig: ring.LifecyclerConfig{
 			RingConfig: ring.Config{
-				KVStore: ring.KVConfig{
+				KVStore: kv.Config{
 					Store: "inmemory",
 				},
 				ReplicationFactor: 1,
@@ -85,7 +93,7 @@ func setupTestIngester(b *testing.B) (*Ingester, error) {
 	dbConfig := phlaredb.Config{
 		DataPath:           filepath.Join(tmpDir, "data"),
 		MaxBlockDuration:   2 * time.Hour,
-		TargetBlockSize:    1024 * 1024 * 1024, // 1GB
+		RowGroupTargetSize: 1024 * 1024 * 1024, // 1GB
 		DisableEnforcement: true,               // Disable enforcement for benchmarks
 	}
 
@@ -102,7 +110,7 @@ func generateTestProfile() []byte {
 	// Create a simple profile for testing
 	profile := &profilev1.Profile{
 		SampleType: []*profilev1.ValueType{
-			{Type: "samples", Unit: "count"},
+			{Type: 1, Unit: 1},
 		},
 		Sample: []*profilev1.Sample{
 			{
