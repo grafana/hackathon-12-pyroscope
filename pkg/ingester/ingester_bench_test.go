@@ -97,20 +97,53 @@ func setupTestIngester(b *testing.B, ctx context.Context) (*Ingester, error) {
 func generateTestProfile() []byte {
 	// Create a simple profile for testing
 	profile := &profilev1.Profile{
+		StringTable: []string{"", "samples", "count", "function", "main"},  // Add StringTable
 		SampleType: []*profilev1.ValueType{
-			{Type: 1, Unit: 1},
+			{
+				Type: 1, // Index into StringTable
+				Unit: 2, // Index into StringTable
+			},
 		},
 		Sample: []*profilev1.Sample{
 			{
-				Value:      []int64{1},
+				Value: []int64{1},
 				Label: []*profilev1.Label{
-					{Key: 1, Str: 1},
+					{
+						Key: 3, // Index into StringTable for "function"
+						Str: 4, // Index into StringTable for "main"
+					},
 				},
 				LocationId: []uint64{1},
 			},
 		},
+		Location: []*profilev1.Location{
+			{
+				Id: 1,
+				Line: []*profilev1.Line{
+					{
+						FunctionId: 1,
+						Line:      1,
+					},
+				},
+			},
+		},
+		Function: []*profilev1.Function{
+			{
+				Id:       1,
+				Name:     4, // Index into StringTable for "main"
+				SystemName: 4, // Index into StringTable for "main"
+				Filename: 4, // Index into StringTable for "main"
+			},
+		},
+		TimeNanos: time.Now().UnixNano(),
+		DurationNanos: int64(time.Second),
+		PeriodType: &profilev1.ValueType{
+			Type: 1, // Index into StringTable
+			Unit: 2, // Index into StringTable
+		},
+		Period: 100000000, // 100ms in nanoseconds
 	}
-	// Serialize the profile - in real code, handle the error
+	
 	data, _ := profile.MarshalVT()
 	return data
 }
@@ -131,13 +164,8 @@ func generateLabels(cardinality int) []string {
 
 // Base benchmarks
 func BenchmarkIngester_Push(b *testing.B) {
-	ctx := context.Background()
-	ctx = user.InjectOrgID(ctx, "test")
-	ing, err := setupTestIngester(b, ctx)	
-	if err != nil {
-		b.Fatal(err)
-	}
-	_, err = ing.GetOrCreateInstance("test")
+	ctx := user.InjectOrgID(context.Background(), "test")
+	ing, err := setupTestIngester(b, ctx)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -145,6 +173,7 @@ func BenchmarkIngester_Push(b *testing.B) {
 	if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
 		b.Fatal(err)
 	}
+	defer ing.StopAsync()
 
 	profile := generateTestProfile()
 	req := connect.NewRequest(&pushv1.PushRequest{
@@ -176,7 +205,7 @@ func BenchmarkIngester_Push(b *testing.B) {
 }
 
 func BenchmarkIngester_Flush(b *testing.B) {
-	ctx := context.Background()
+	ctx := user.InjectOrgID(context.Background(), "test")
 	ing, err := setupTestIngester(b, ctx)
 	if err != nil {
 		b.Fatal(err)
@@ -232,8 +261,8 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 	
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
-			ctx := context.Background()
-      ing, err := setupTestIngester(b, ctx)
+			ctx := user.InjectOrgID(context.Background(), "test")
+			ing, err := setupTestIngester(b, ctx)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -285,8 +314,8 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 	
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
-			ctx := context.Background()
-      ing, err := setupTestIngester(b, ctx)
+			ctx := user.InjectOrgID(context.Background(), "test")
+			ing, err := setupTestIngester(b, ctx)
 			if err != nil {
 				b.Fatal(err)
 			}
