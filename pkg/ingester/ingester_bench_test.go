@@ -343,5 +343,4 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 			}
 		})
 	}
-
 } 
