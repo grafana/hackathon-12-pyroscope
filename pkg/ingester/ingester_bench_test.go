@@ -155,7 +155,10 @@ func generateLabels(cardinality int) []string {
 	return labels
 }
 
-// Base benchmarks
+// BenchmarkIngester_Push tests the basic ingestion path performance with minimal labels.
+// This benchmark is important as it establishes the baseline performance for the most
+// common operation in the ingester: pushing a single profile with basic metadata.
+// It helps identify any regressions in the core ingestion path.
 func BenchmarkIngester_Push(b *testing.B) {
 	ctx := user.InjectOrgID(context.Background(), "test")
 	ing, err := setupTestIngester(b, ctx)
@@ -197,6 +200,11 @@ func BenchmarkIngester_Push(b *testing.B) {
 	}
 }
 
+// BenchmarkIngester_Flush tests the performance of flushing profiles from memory to storage.
+// This is critical to measure as flush operations directly impact:
+// 1. Memory usage and GC pressure
+// 2. Write amplification to the underlying storage
+// 3. System reliability during high load periods
 func BenchmarkIngester_Flush(b *testing.B) {
 	ctx := user.InjectOrgID(context.Background(), "test")
 	ing, err := setupTestIngester(b, ctx)
@@ -248,7 +256,12 @@ func BenchmarkIngester_Flush(b *testing.B) {
 	}
 }
 
-// Label cardinality benchmarks
+// BenchmarkIngester_Push_LabelCardinality measures how ingestion performance scales
+// with increasing label cardinality (1 to 50 labels).
+// This is important because:
+// 1. Labels are used for querying and filtering profiles
+// 2. High cardinality can impact memory usage and indexing performance
+// 3. Many production environments use extensive labeling for better observability
 func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 	cardinalities := []int{1, 5, 10, 20, 50}
 	
@@ -302,6 +315,13 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 	}
 }
 
+// BenchmarkIngester_Flush_LabelCardinality tests how flush performance is affected
+// by different label cardinalities. This benchmark pushes 100 samples per cardinality
+// level before measuring flush performance.
+// This is crucial because:
+// 1. Label cardinality affects the size and complexity of the index
+// 2. Higher cardinalities can lead to larger flush operations
+// 3. Understanding this relationship helps in capacity planning and setting limits
 func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 	cardinalities := []int{1, 5, 10, 20, 50}
 	
