@@ -11,10 +11,10 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	// "github.com/grafana/dskit/ring"
-	// "github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/user"
+	"github.com/grafana/dskit/ring"
+	"github.com/grafana/dskit/kv"
 	// "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -78,20 +78,6 @@ func setupTestIngester(b *testing.B, ctx context.Context) (*Ingester, error) {
 
 	// Basic ingester config
 	cfg := defaultIngesterTestConfig(b)
-	// cfg := Config{
-	// 	LifecyclerConfig: ring.LifecyclerConfig{
-	// 		RingConfig: ring.Config{
-	// 			KVStore: kv.Config{
-	// 				Store: "inmemory",
-	// 			},
-	// 			ReplicationFactor: 1,
-	// 		},
-	// 		NumTokens:        1,
-	// 		HeartbeatPeriod: 100 * time.Millisecond,
-	// 		JoinAfter:       100 * time.Millisecond,
-	// 		ObservePeriod:   100 * time.Millisecond,
-	// 	},
-	// }
 
 	// Database config
 	dbConfig := phlaredb.Config{
@@ -193,7 +179,7 @@ func BenchmarkIngester_Push(b *testing.B) {
 
 func BenchmarkIngester_Flush(b *testing.B) {
 	ctx := context.Background()
-	ing, err := setupTestIngester(b, ctx	)
+	ing, err := setupTestIngester(b, ctx)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -249,7 +235,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
 			ctx := context.Background()
-			ing, err := setupTestIngester(b, ctx	)
+      ing, err := setupTestIngester(b, ctx)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -302,7 +288,7 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
 			ctx := context.Background()
-			ing, err := setupTestIngester(b, ctx)
+      ing, err := setupTestIngester(b, ctx)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -357,4 +343,5 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 			}
 		})
 	}
+
 } 
