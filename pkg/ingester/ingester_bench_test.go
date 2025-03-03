@@ -14,8 +14,9 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
-	"github.com/grafana/pyroscope/pkg/phlare/context"
+	phlarectx "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/validation"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -34,7 +35,7 @@ func (m *mockLimits) MaxLocalSeriesPerUser(_ string) int { return m.maxSeriesPer
 func (m *mockLimits) MaxLocalSeriesPerMetric(_ string) int { return m.maxSeriesPerUser }
 func (m *mockLimits) MaxGlobalSeriesPerUser(_ string) int { return m.maxSeriesPerUser }
 func (m *mockLimits) MaxGlobalSeriesPerMetric(_ string) int { return m.maxSeriesPerUser }
-func (m *mockLimits) DistributorUsageGroups(_ string) UsageGroups { return nil }
+func (m *mockLimits) DistributorUsageGroups(_ string) *validation.UsageGroupConfig { return nil }
 
 func setupTestIngester(b *testing.B) (*Ingester, error) {
 	// Create a temporary directory for the test data
@@ -49,8 +50,8 @@ func setupTestIngester(b *testing.B) (*Ingester, error) {
 	// Setup basic context with logger and registry
 	logger := log.NewNopLogger()
 	reg := prometheus.NewRegistry()
-	ctx := context.WithLogger(context.Background(), logger)
-	ctx = context.WithRegistry(ctx, reg)
+	ctx := phlarectx.WithLogger(context.Background(), logger)
+	ctx = phlarectx.WithRegistry(ctx, reg)
 
 	// Configure local storage bucket
 	bucketConfig := client.Config{
