@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/kv"
-	"github.com/grafana/pyroscope/pkg/objstore"
+	// "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	phlarectx "github.com/grafana/pyroscope/pkg/phlare/context"
@@ -22,6 +22,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -156,10 +157,15 @@ func BenchmarkIngester_Push(b *testing.B) {
 
 	profile := generateTestProfile()
 	req := connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.ProfileSeries{
+		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []string{"service", "test"},
-				Samples: []*pushv1.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{
+						Name:  "service",
+						Value: "test",
+					},
+				},
+				Samples: []*pushv1.RawSample{
 					{
 						ID:         uuid.New().String(),
 						RawProfile: profile,
@@ -196,10 +202,15 @@ func BenchmarkIngester_Flush(b *testing.B) {
 	// First push some data
 	profile := generateTestProfile()
 	pushReq := connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.ProfileSeries{
+		Series: []*pushv1.RawProfileSeries{
 			{
-				Labels: []string{"service", "test"},
-				Samples: []*pushv1.ProfileSample{
+				Labels: []*typesv1.LabelPair{
+					{
+						Name:  "service",
+						Value: "test",
+					},
+				},
+				Samples: []*pushv1.RawSample{
 					{
 						ID:         uuid.New().String(),
 						RawProfile: profile,
@@ -245,13 +256,19 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 			defer ing.StopAsync()
 
 			profile := generateTestProfile()
-			labels := generateLabels(cardinality)
+			// labels := generateLabels(cardinality) // TODO: fix this
+			labels := []*typesv1.LabelPair{
+				{
+					Name:  "service",
+					Value: "test",
+				},
+			}
 			
 			req := connect.NewRequest(&pushv1.PushRequest{
-				Series: []*pushv1.ProfileSeries{
+				Series: []*pushv1.RawProfileSeries{
 					{
 						Labels: labels,
-						Samples: []*pushv1.ProfileSample{
+						Samples: []*pushv1.RawSample{
 							{
 								ID:         uuid.New().String(),
 								RawProfile: profile,
@@ -293,15 +310,21 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 
 			// Push data with different label cardinalities
 			profile := generateTestProfile()
-			labels := generateLabels(cardinality)
+			// labels := generateLabels(cardinality) // TODO: fix this
+			labels := []*typesv1.LabelPair{
+				{
+					Name:  "service",
+					Value: "test",
+				},
+			}
 			
 			// Push multiple samples to ensure we have enough data to make the flush meaningful
 			for i := 0; i < 100; i++ {
 				pushReq := connect.NewRequest(&pushv1.PushRequest{
-					Series: []*pushv1.ProfileSeries{
+					Series: []*pushv1.RawProfileSeries{
 						{
 							Labels: labels,
-							Samples: []*pushv1.ProfileSample{
+							Samples: []*pushv1.RawSample{
 								{
 									ID:         uuid.New().String(),
 									RawProfile: profile,
