@@ -45,7 +45,7 @@ func (m *mockLimits) MaxGlobalSeriesPerTenant(_ string) int { return m.maxSeries
 func (m *mockLimits) DistributorUsageGroups(_ string) *validation.UsageGroupConfig { return nil }
 func (m *mockLimits) IngestionTenantShardSize(_ string) int { return 1024 * 1024 * 1024 }
 
-func setupTestIngester(b *testing.B) (*Ingester, error) {
+func setupTestIngester(b *testing.B, ctx context.Context) (*Ingester, error) {
 	// Create a temporary directory for the test data
 	tmpDir, err := os.MkdirTemp("", "ingester-bench-*")
 	if err != nil {
@@ -58,7 +58,7 @@ func setupTestIngester(b *testing.B) (*Ingester, error) {
 	// Setup basic context with logger and registry
 	logger := log.NewNopLogger()
 	reg := prometheus.NewRegistry()
-	ctx := phlarectx.WithLogger(context.Background(), logger)
+	ctx = phlarectx.WithLogger(ctx, logger)
 	ctx = phlarectx.WithRegistry(ctx, reg)
 
 	// Configure local storage bucket
@@ -119,6 +119,9 @@ func generateTestProfile() []byte {
 		Sample: []*profilev1.Sample{
 			{
 				Value:      []int64{1},
+				Label: []*profilev1.Label{
+					{Key: 1, Str: 1},
+				},
 				LocationId: []uint64{1},
 			},
 		},
@@ -146,7 +149,11 @@ func generateLabels(cardinality int) []string {
 func BenchmarkIngester_Push(b *testing.B) {
 	ctx := context.Background()
 	ctx = user.InjectOrgID(ctx, "test")
-	ing, err := setupTestIngester(b)
+	ing, err := setupTestIngester(b, ctx)	
+	if err != nil {
+		b.Fatal(err)
+	}
+	_, err = ing.GetOrCreateInstance("test")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -186,7 +193,7 @@ func BenchmarkIngester_Push(b *testing.B) {
 
 func BenchmarkIngester_Flush(b *testing.B) {
 	ctx := context.Background()
-	ing, err := setupTestIngester(b)
+	ing, err := setupTestIngester(b, ctx	)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -242,7 +249,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
 			ctx := context.Background()
-			ing, err := setupTestIngester(b)
+			ing, err := setupTestIngester(b, ctx	)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -295,7 +302,7 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
 			ctx := context.Background()
-			ing, err := setupTestIngester(b)
+			ing, err := setupTestIngester(b, ctx)
 			if err != nil {
 				b.Fatal(err)
 			}
