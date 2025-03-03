@@ -11,8 +11,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	"github.com/grafana/dskit/ring"
-	"github.com/grafana/dskit/kv"
+	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/user"
 	// "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -43,7 +43,7 @@ func (m *mockLimits) MaxGlobalSeriesPerTenant(_ string) int { return m.maxSeries
 func (m *mockLimits) DistributorUsageGroups(_ string) *validation.UsageGroupConfig { return nil }
 func (m *mockLimits) IngestionTenantShardSize(_ string) int { return 1024 * 1024 * 1024 }
 
-func setupTestIngester(b *testing.B) (*Ingester, error) {
+func setupTestIngester(b *testing.B, ctx context.Context) (*Ingester, error) {
 	// Create a temporary directory for the test data
 	tmpDir, err := os.MkdirTemp("", "ingester-bench-*")
 	if err != nil {
@@ -56,7 +56,7 @@ func setupTestIngester(b *testing.B) (*Ingester, error) {
 	// Setup basic context with logger and registry
 	logger := log.NewNopLogger()
 	reg := prometheus.NewRegistry()
-	ctx := phlarectx.WithLogger(context.Background(), logger)
+	ctx = phlarectx.WithLogger(ctx, logger)
 	ctx = phlarectx.WithRegistry(ctx, reg)
 
 	// Configure local storage bucket
@@ -75,20 +75,7 @@ func setupTestIngester(b *testing.B) (*Ingester, error) {
 	}
 
 	// Basic ingester config
-	cfg := Config{
-		LifecyclerConfig: ring.LifecyclerConfig{
-			RingConfig: ring.Config{
-				KVStore: kv.Config{
-					Store: "inmemory",
-				},
-				ReplicationFactor: 1,
-			},
-			NumTokens:        1,
-			HeartbeatPeriod: 100 * time.Millisecond,
-			JoinAfter:       100 * time.Millisecond,
-			ObservePeriod:   100 * time.Millisecond,
-		},
-	}
+	cfg := defaultIngesterTestConfig(b)
 
 	// Database config
 	dbConfig := phlaredb.Config{
@@ -116,6 +103,9 @@ func generateTestProfile() []byte {
 		Sample: []*profilev1.Sample{
 			{
 				Value:      []int64{1},
+				Label: []*profilev1.Label{
+					{Key: 1, Str: 1},
+				},
 				LocationId: []uint64{1},
 			},
 		},
@@ -142,18 +132,19 @@ func generateLabels(cardinality int) []string {
 // Base benchmarks
 func BenchmarkIngester_Push(b *testing.B) {
 	ctx := context.Background()
-	ing, err := setupTestIngester(b)
+	ctx = user.InjectOrgID(ctx, "test")
+	ing, err := setupTestIngester(b, ctx)	
+	if err != nil {
+		b.Fatal(err)
+	}
+	_, err = ing.GetOrCreateInstance("test")
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	if err := ing.StartAsync(ctx); err != nil {
+	if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
 		b.Fatal(err)
 	}
-	if err := ing.AwaitRunning(ctx); err != nil {
-		b.Fatal(err)
-	}
-	defer ing.StopAsync()
 
 	profile := generateTestProfile()
 	req := connect.NewRequest(&pushv1.PushRequest{
@@ -186,7 +177,7 @@ func BenchmarkIngester_Push(b *testing.B) {
 
 func BenchmarkIngester_Flush(b *testing.B) {
 	ctx := context.Background()
-	ing, err := setupTestIngester(b)
+	ing, err := setupTestIngester(b, ctx)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -242,7 +233,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
 			ctx := context.Background()
-			ing, err := setupTestIngester(b)
+      ing, err := setupTestIngester(b, ctx)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -295,7 +286,7 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
 			ctx := context.Background()
-			ing, err := setupTestIngester(b)
+      ing, err := setupTestIngester(b, ctx)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -350,4 +341,4 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 			}
 		})
 	}
-}
+} 
