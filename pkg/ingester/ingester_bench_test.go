@@ -11,8 +11,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	"github.com/grafana/dskit/ring"
-	"github.com/grafana/dskit/kv"
+	// "github.com/grafana/dskit/ring"
+	// "github.com/grafana/dskit/kv"
+	"github.com/grafana/dskit/services"
 	// "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -75,20 +76,21 @@ func setupTestIngester(b *testing.B) (*Ingester, error) {
 	}
 
 	// Basic ingester config
-	cfg := Config{
-		LifecyclerConfig: ring.LifecyclerConfig{
-			RingConfig: ring.Config{
-				KVStore: kv.Config{
-					Store: "inmemory",
-				},
-				ReplicationFactor: 1,
-			},
-			NumTokens:        1,
-			HeartbeatPeriod: 100 * time.Millisecond,
-			JoinAfter:       100 * time.Millisecond,
-			ObservePeriod:   100 * time.Millisecond,
-		},
-	}
+	cfg := defaultIngesterTestConfig(b)
+	// cfg := Config{
+	// 	LifecyclerConfig: ring.LifecyclerConfig{
+	// 		RingConfig: ring.Config{
+	// 			KVStore: kv.Config{
+	// 				Store: "inmemory",
+	// 			},
+	// 			ReplicationFactor: 1,
+	// 		},
+	// 		NumTokens:        1,
+	// 		HeartbeatPeriod: 100 * time.Millisecond,
+	// 		JoinAfter:       100 * time.Millisecond,
+	// 		ObservePeriod:   100 * time.Millisecond,
+	// 	},
+	// }
 
 	// Database config
 	dbConfig := phlaredb.Config{
@@ -142,18 +144,16 @@ func generateLabels(cardinality int) []string {
 // Base benchmarks
 func BenchmarkIngester_Push(b *testing.B) {
 	ctx := context.Background()
+	ctx = context.WithValue(ctx, 0, "test_org")
+	ctx = phlarectx.WrapTenant(ctx, "test")
 	ing, err := setupTestIngester(b)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	if err := ing.StartAsync(ctx); err != nil {
+	if err := services.StartAndAwaitRunning(context.Background(), ing); err != nil {
 		b.Fatal(err)
 	}
-	if err := ing.AwaitRunning(ctx); err != nil {
-		b.Fatal(err)
-	}
-	defer ing.StopAsync()
 
 	profile := generateTestProfile()
 	req := connect.NewRequest(&pushv1.PushRequest{
