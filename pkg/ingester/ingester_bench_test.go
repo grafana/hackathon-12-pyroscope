@@ -14,6 +14,7 @@ import (
 	// "github.com/grafana/dskit/ring"
 	// "github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/user"
 	// "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -144,14 +145,13 @@ func generateLabels(cardinality int) []string {
 // Base benchmarks
 func BenchmarkIngester_Push(b *testing.B) {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, 0, "test_org")
-	ctx = phlarectx.WrapTenant(ctx, "test")
+	ctx = user.InjectOrgID(ctx, "test")
 	ing, err := setupTestIngester(b)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	if err := services.StartAndAwaitRunning(context.Background(), ing); err != nil {
+	if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
 		b.Fatal(err)
 	}
 
