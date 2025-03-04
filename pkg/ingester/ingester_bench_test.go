@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 	"time"
+	"os"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -14,10 +15,12 @@ import (
 	"github.com/grafana/dskit/user"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/validation"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/go-kit/log"
 )
 
 // mockLimits implements the Limits interface for testing
@@ -42,6 +45,7 @@ func (m *mockLimits) DistributorUsageGroups(_ string) *validation.UsageGroupConf
 }
 func (m *mockLimits) IngestionTenantShardSize(_ string) int { return 1024 * 1024 * 1024 }
 
+// setupTestIngester creates a new ingester instance for benchmarking
 func setupTestIngester(b *testing.B, ctx context.Context) (*Ingester, error) {
 	dir := b.TempDir()
 
@@ -68,8 +72,14 @@ func setupTestIngester(b *testing.B, ctx context.Context) (*Ingester, error) {
 		maxLabelNamesPerSeries: 100,
 	}
 
+	// Create a no-op logger by default
+	logger := log.NewNopLogger()
+	if testing.Verbose() {
+		logger = log.NewLogfmtLogger(os.Stdout)
+	}
+
 	ing, err := New(
-		ctx,
+		phlarecontext.WithLogger(ctx, logger),
 		Config{
 			LifecyclerConfig: defaultLifecyclerConfig,
 		},
