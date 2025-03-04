@@ -179,7 +179,13 @@ func BenchmarkIngester_Push(b *testing.B) {
 	if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
 		b.Fatal(err)
 	}
-	defer ing.StopAsync()
+	
+	// Create a cleanup function that properly stops the ingester
+	defer func() {
+		if err := services.StopAndAwaitTerminated(ctx, ing); err != nil {
+			b.Logf("failed to stop ingester: %v", err)
+		}
+	}()
 
 	profile := generateTestProfile()
 	req := connect.NewRequest(&pushv1.PushRequest{
@@ -222,13 +228,16 @@ func BenchmarkIngester_Flush(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	if err := ing.StartAsync(ctx); err != nil {
+	if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
 		b.Fatal(err)
 	}
-	if err := ing.AwaitRunning(ctx); err != nil {
-		b.Fatal(err)
-	}
-	defer ing.StopAsync()
+
+	// Create a cleanup function that properly stops the ingester
+	defer func() {
+		if err := services.StopAndAwaitTerminated(ctx, ing); err != nil {
+			b.Logf("failed to stop ingester: %v", err)
+		}
+	}()
 
 	// First push some data
 	profile := generateTestProfile()
@@ -283,13 +292,16 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 				b.Fatal(err)
 			}
 
-			if err := ing.StartAsync(ctx); err != nil {
+			if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
 				b.Fatal(err)
 			}
-			if err := ing.AwaitRunning(ctx); err != nil {
-				b.Fatal(err)
-			}
-			defer ing.StopAsync()
+
+			// Create a cleanup function that properly stops the ingester
+			defer func() {
+				if err := services.StopAndAwaitTerminated(ctx, ing); err != nil {
+					b.Logf("failed to stop ingester: %v", err)
+				}
+			}()
 
 			profile := generateTestProfile()
 			// labels := generateLabels(cardinality) // TODO: fix this
@@ -343,13 +355,16 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 				b.Fatal(err)
 			}
 
-			if err := ing.StartAsync(ctx); err != nil {
+			if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
 				b.Fatal(err)
 			}
-			if err := ing.AwaitRunning(ctx); err != nil {
-				b.Fatal(err)
-			}
-			defer ing.StopAsync()
+
+			// Create a cleanup function that properly stops the ingester
+			defer func() {
+				if err := services.StopAndAwaitTerminated(ctx, ing); err != nil {
+					b.Logf("failed to stop ingester: %v", err)
+				}
+			}()
 
 			// Push data with different label cardinalities
 			profile := generateTestProfile()
