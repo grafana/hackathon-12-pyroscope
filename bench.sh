@@ -61,13 +61,13 @@ fi
 # setup paths/filenames
 BRANCH_TAG=${GIT_BRANCH//'/'/'_'}
 BASE_DIR=$(realpath ./)
-BRANCH_DIR=${BASE_DIR}/testdata/benchmarks_${BRANCH_TAG}
-MAIN_DIR=${BASE_DIR}/testdata/benchmarks_main
+BRANCH_DIR=${BASE_DIR}/data/benchmarks_${BRANCH_TAG}
+MAIN_DIR=${BASE_DIR}/data/benchmarks_main
 
 # setup and clean up the files
-if [ ! -d ./testdata ]
+if [ ! -d ./data ]
 then
-  mkdir testdata
+  mkdir data
 fi
 
 rm -rf $BRANCH_DIR
