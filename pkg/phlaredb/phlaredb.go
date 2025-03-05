@@ -112,10 +112,14 @@ type PhlareDB struct {
 	blockQuerier *BlockQuerier
 	limiter      TenantLimiter
 	evictCh      chan *blockEviction
+	maxBlockDurationNanos int64  // Cache the nanoseconds value
 }
 
 func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlareobj.Bucket) (*PhlareDB, error) {
 	reg := phlarecontext.Registry(phlarectx)
+	// Estimate initial heads capacity based on max block duration
+	initialHeadsCapacity := 10 // or some other reasonable default
+	
 	f := &PhlareDB{
 		cfg:     cfg,
 		logger:  phlarecontext.Logger(phlarectx),
@@ -123,7 +127,8 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 		evictCh: make(chan *blockEviction),
 		metrics: newHeadMetrics(reg),
 		limiter: limiter,
-		heads:   make(map[int64]*Head),
+		heads:   make(map[int64]*Head, initialHeadsCapacity),
+		maxBlockDurationNanos: cfg.MaxBlockDuration.Nanoseconds(),
 	}
 
 	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
@@ -330,7 +335,11 @@ func (f *PhlareDB) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUI
 	})
 }
 
-func endRangeForTimestamp(t, width int64) (maxt int64) {
+func endRangeForTimestamp(t, width int64) int64 {
+	// Use bit operations if width is power of 2
+	if width&(width-1) == 0 {
+		return (t & ^(width - 1)) + width
+	}
 	return (t/width)*width + width
 }
 
@@ -338,11 +347,9 @@ func endRangeForTimestamp(t, width int64) (maxt int64) {
 // We hold multiple heads and assign them a fixed range of timestamps.
 // This helps make block range fixed and predictable.
 func (f *PhlareDB) headForIngest(sampleTimeNanos int64, fn func(*Head) error) (err error) {
-	// we use the maxT of fixed interval as the key to the head map
 	maxT := endRangeForTimestamp(sampleTimeNanos, f.maxBlockDuration().Nanoseconds())
-	// We need to keep track of the in-flight ingestion requests to ensure that none
-	// of them will compete with Flush. Lock is acquired to avoid Add after Wait that
-	// is called in the very beginning of Flush.
+	
+	// Fast path: try read lock first
 	f.headLock.RLock()
 	if h := f.heads[maxT]; h != nil {
 		h.inFlightProfiles.Add(1)
@@ -350,20 +357,20 @@ func (f *PhlareDB) headForIngest(sampleTimeNanos int64, fn func(*Head) error) (e
 		defer h.inFlightProfiles.Done()
 		return fn(h)
 	}
-
 	f.headLock.RUnlock()
+
+	// Slow path: need write lock to create new head
 	f.headLock.Lock()
-	head, ok := f.heads[maxT]
+	h, ok := f.heads[maxT]
 	if !ok {
-		h, err := NewHead(f.phlarectx, f.cfg, f.limiter)
+		var err error
+		h, err = NewHead(f.phlarectx, f.cfg, f.limiter)
 		if err != nil {
 			f.headLock.Unlock()
 			return err
 		}
-		head = h
-		f.heads[maxT] = head
+		f.heads[maxT] = h
 	}
-	h := head
 	h.inFlightProfiles.Add(1)
 	f.headLock.Unlock()
 	defer h.inFlightProfiles.Done()
