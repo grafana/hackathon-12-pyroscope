@@ -151,16 +151,20 @@ func generateTestProfile() []byte {
 	return data
 }
 
-func generateLabels(cardinality int) []string {
-	labels := make([]string, 0, cardinality*2)
+func generateLabels(cardinality int) []*typesv1.LabelPair {
+	labels := make([]*typesv1.LabelPair, 0, cardinality)
 	// Always include service label
-	labels = append(labels, "service", "test")
+	labels = append(labels, &typesv1.LabelPair{
+		Name:  "service",
+		Value: "test",
+	})
 	
 	// Add additional labels
 	for i := 0; i < cardinality-1; i++ {
-		labels = append(labels, 
-			fmt.Sprintf("label_%d", i), 
-			fmt.Sprintf("value_%d", i))
+		labels = append(labels, &typesv1.LabelPair{
+			Name:  fmt.Sprintf("label_%d", i),
+			Value: fmt.Sprintf("value_%d", i),
+		})
 	}
 	return labels
 }
@@ -282,7 +286,7 @@ func BenchmarkIngester_Flush(b *testing.B) {
 // 2. High cardinality can impact memory usage and indexing performance
 // 3. Many production environments use extensive labeling for better observability
 func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
-	cardinalities := []int{1, 100, 1000, 10000, 100000, 1000000, 10000000}
+	cardinalities := []int{1, 10, 20, 50, 100, 200, 500, 1000}
 	
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
@@ -304,13 +308,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 			}()
 
 			profile := generateTestProfile()
-			// labels := generateLabels(cardinality) // TODO: fix this
-			labels := []*typesv1.LabelPair{
-				{
-					Name:  "service",
-					Value: "test",
-				},
-			}
+			labels := generateLabels(cardinality)
 			
 			req := connect.NewRequest(&pushv1.PushRequest{
 				Series: []*pushv1.RawProfileSeries{
@@ -345,7 +343,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 // 2. Higher cardinalities can lead to larger flush operations
 // 3. Understanding this relationship helps in capacity planning and setting limits
 func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
-	cardinalities := []int{1, 10, 100, 1000, 10000, 100000, 1000000, 10000000}
+	cardinalities := []int{1, 10, 20, 50, 100, 200, 500, 1000}
 	
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
@@ -368,13 +366,7 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 
 			// Push data with different label cardinalities
 			profile := generateTestProfile()
-			// labels := generateLabels(cardinality) // TODO: fix this
-			labels := []*typesv1.LabelPair{
-				{
-					Name:  "service",
-					Value: "test",
-				},
-			}
+			labels := generateLabels(cardinality)
 			
 			// Push multiple samples to ensure we have enough data to make the flush meaningful
 			for i := 0; i < 100; i++ {
@@ -493,10 +485,12 @@ func generateTestProfileWithSize(targetSizeBytes int) []byte {
 func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
 	sizes := []int{
 		1 * 1024,        // 1KB
-		10 * 1024,       // 10KB
+		2 * 1024,       // 2KB
+		5 * 1024,      // 5KB
+		10 * 1024,      // 10KB
+		20 * 1024,      // 20KB
+		50 * 1024,      // 50KB
 		100 * 1024,      // 100KB
-		1 * 1024 * 1024, // 1MB
-		10 * 1024 * 1024, // 10MB
 	}
 
 	for _, size := range sizes {
