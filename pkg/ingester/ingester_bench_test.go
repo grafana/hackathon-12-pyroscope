@@ -484,13 +484,11 @@ func generateTestProfileWithSize(targetSizeBytes int) []byte {
 // 3. Understanding size-based performance helps in capacity planning
 func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
 	sizes := []int{
-		1 * 1024,        // 1KB
-		2 * 1024,       // 2KB
-		5 * 1024,      // 5KB
 		10 * 1024,      // 10KB
 		20 * 1024,      // 20KB
-		50 * 1024,      // 50KB
-		100 * 1024,      // 100KB
+		30 * 1024,      // 30KB
+		40 * 1024,      // 40KB
+		50 * 1024,      // 50KB	
 	}
 
 	for _, size := range sizes {
