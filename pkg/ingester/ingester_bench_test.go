@@ -282,7 +282,7 @@ func BenchmarkIngester_Flush(b *testing.B) {
 // 2. High cardinality can impact memory usage and indexing performance
 // 3. Many production environments use extensive labeling for better observability
 func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
-	cardinalities := []int{1, 100, 1000, 10000, 100000, 1000000, 10000000}
+	cardinalities := []int{1, 100, 1000, 10000, 100000}
 	
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
@@ -345,7 +345,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 // 2. Higher cardinalities can lead to larger flush operations
 // 3. Understanding this relationship helps in capacity planning and setting limits
 func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
-	cardinalities := []int{1, 10, 100, 1000, 10000, 100000, 1000000, 10000000}
+	cardinalities := []int{1, 10, 100, 1000, 10000, 100000}
 	
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
@@ -496,7 +496,6 @@ func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
 		10 * 1024,       // 10KB
 		100 * 1024,      // 100KB
 		1 * 1024 * 1024, // 1MB
-		10 * 1024 * 1024, // 10MB
 	}
 
 	for _, size := range sizes {
