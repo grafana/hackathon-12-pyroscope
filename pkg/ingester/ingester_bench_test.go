@@ -483,12 +483,17 @@ func generateTestProfileWithSize(targetSizeBytes int) []byte {
 // 2. Large profiles can impact memory usage and processing time
 // 3. Understanding size-based performance helps in capacity planning
 func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
-	sizes := []int{
-		10 * 1024,      // 10KB
-		20 * 1024,      // 20KB
-		30 * 1024,      // 30KB
-		40 * 1024,      // 40KB
-		50 * 1024,      // 50KB	
+	sizes := []int{	
+		100 * 1024,     // 100KB
+		200 * 1024,     // 200KB
+		300 * 1024,     // 300KB
+		400 * 1024,     // 400KB
+		500 * 1024,     // 500KB
+		1000 * 1024,    // 1MB
+		2000 * 1024,    // 2MB
+		3000 * 1024,    // 3MB
+		4000 * 1024,    // 4MB
+		5000 * 1024,    // 5MB		
 	}
 
 	for _, size := range sizes {
