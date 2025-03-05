@@ -11,9 +11,9 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
-const (
-	defaultRowBufferSize = 64
-)
+// const (
+// 	defaultRowBufferSize = 64
+// )
 
 var (
 	_ parquet.RowReader          = (*emptyRowReader)(nil)
