@@ -240,7 +240,7 @@ type deduplicatingSlice[M schemav1.Models, K comparable, H Helper[M, K]] struct 
 }
 
 func (s *deduplicatingSlice[M, K, H]) init() {
-	s.lookup = make(map[K]int64)
+	s.lookup = make(map[K]int64, 1024)
 }
 
 func (s *deduplicatingSlice[M, K, H]) MemorySize() uint64 {
