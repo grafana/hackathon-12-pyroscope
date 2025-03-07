@@ -5,6 +5,7 @@ on:
     paths:
     - '.github/workflows/**'
     - 'pkg/ingester/**'
+    - 'pkg/phlaredb/**'
 
 jobs:
   bench-branch:
