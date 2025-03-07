@@ -14,11 +14,6 @@ type RowWriterFlusher interface {
     Flush() error
 }
 
-// defaultRowBufferSize defines the baseline number of rows to buffer in memory 
-// per read/write iteration. Increasing this value can improve throughput by 
-// reducing the number of read/write calls (the Parquet-Go library default is very small).
-const defaultRowBufferSize = 8192  // Increased from the original small default (e.g. 42/4096) for performance
-
 // CopyAsRowGroups reads rows from src and writes them to dst, flushing (ending the 
 // current row group) every rowGroupNumCount rows. It returns the total number of rows 
 // copied and the number of row groups written. Flush is called on dst to finalize each row group.
