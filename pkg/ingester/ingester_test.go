@@ -28,7 +28,7 @@ import (
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/ulid"
+	"github.com/oklog/ulid"
 )
 
 func defaultIngesterTestConfig(t testing.TB) Config {
