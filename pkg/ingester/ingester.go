@@ -34,6 +34,7 @@ import (
 
 var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
 
+// Config represents the configuration for the Ingester service.
 type Config struct {
 	LifecyclerConfig ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
 }
@@ -47,6 +48,9 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
+// Ingester is responsible for receiving and storing profile data from clients.
+// It manages multiple instances, one per tenant, and handles data ingestion,
+// storage, and lifecycle management.
 type Ingester struct {
 	services.Service
 
@@ -80,6 +84,9 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
+// New creates a new Ingester instance with the provided configuration.
+// It initializes the local storage, lifecycler, and retention policies.
+// Returns an error if initialization fails.
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration) (*Ingester, error) {
 	i := &Ingester{
 		cfg:           cfg,
@@ -170,6 +177,9 @@ func (i *Ingester) stopping(_ error) error {
 	return errs.Err()
 }
 
+// GetOrCreateInstance returns an instance for the given tenant ID.
+// If the instance doesn't exist, it creates a new one.
+// Returns an error if instance creation fails.
 func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //nolint:revive
 	inst, ok := i.getInstanceByID(tenantID)
 	if ok {
