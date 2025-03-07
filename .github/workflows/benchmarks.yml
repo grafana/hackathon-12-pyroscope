@@ -6,6 +6,7 @@ on:
     - '.github/workflows/**'
     - 'pkg/ingester/**'
     - 'pkg/phlaredb/**'
+    - 'pkg/parquet/**'
 
 jobs:
   bench-branch:
