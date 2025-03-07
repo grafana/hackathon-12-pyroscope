@@ -483,7 +483,7 @@ func generateTestProfileWithSize(targetSizeBytes int) []byte {
 // 2. Large profiles can impact memory usage and processing time
 // 3. Understanding size-based performance helps in capacity planning
 func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
-	sizes := []int{	
+	sizes := []int{	    // these sizes are chosen based on an actual 3mb CPU profile
 		100 * 1024,     // 100KB
 		500 * 1024,     // 500KB
 		1000 * 1024,    // 1MB
