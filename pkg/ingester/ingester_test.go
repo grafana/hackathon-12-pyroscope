@@ -298,5 +298,5 @@ func Test_ForInstanceHelpers(t *testing.T) {
 		return nil
 	})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "no tenant found")
+	require.Contains(t, err.Error(), "invalid_argument: no org id")
 }
