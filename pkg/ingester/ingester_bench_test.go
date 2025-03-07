@@ -485,9 +485,6 @@ func generateTestProfileWithSize(targetSizeBytes int) []byte {
 func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
 	sizes := []int{	
 		100 * 1024,     // 100KB
-		200 * 1024,     // 200KB
-		300 * 1024,     // 300KB
-		400 * 1024,     // 400KB
 		500 * 1024,     // 500KB
 		1000 * 1024,    // 1MB
 		2000 * 1024,    // 2MB

@@ -18,10 +18,13 @@ var (
 	activeSeriesCleanup = time.Minute
 )
 
+// RingCount represents an interface for accessing the count of healthy instances in a ring.
 type RingCount interface {
 	HealthyInstancesCount() int
 }
 
+// Limits defines the interface for accessing tenant-specific limits and configurations.
+// It provides methods to get maximum series limits, shard sizes, and usage group configurations.
 type Limits interface {
 	MaxLocalSeriesPerTenant(tenantID string) int
 	MaxGlobalSeriesPerTenant(tenantID string) int
@@ -29,6 +32,8 @@ type Limits interface {
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 }
 
+// Limiter provides rate limiting functionality for profile ingestion.
+// It ensures that tenants don't exceed their configured series limits.
 type Limiter interface {
 	// AllowProfile returns an error if the profile is not allowed to be ingested.
 	// The error is a validation error and can be out of order or max series limit reached.
@@ -51,6 +56,9 @@ type limiter struct {
 	wg     sync.WaitGroup
 }
 
+// NewLimiter creates a new Limiter instance for a specific tenant.
+// It initializes the limiter with the provided configuration and starts
+// a background cleanup routine.
 func NewLimiter(tenantID string, limits Limits, ring RingCount, replicationFactor int) Limiter {
 	ctx, cancel := context.WithCancel(context.Background())
 
