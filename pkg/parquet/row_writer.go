@@ -1,4 +1,3 @@
-// Package parquet provides utilities for reading/writing Parquet rows.
 package parquet
 
 import (
@@ -7,16 +6,14 @@ import (
 	"github.com/parquet-go/parquet-go"
 )
 
-// RowWriterFlusher extends parquet.RowWriter with an explicit Flush method to
-// start a new row group in the output.
 type RowWriterFlusher interface {
 	parquet.RowWriter
 	Flush() error
 }
 
-// CopyAsRowGroups reads rows from src and writes them to dst, flushing (ending the
-// current row group) every rowGroupNumCount rows. It returns the total number of rows
-// copied and the number of row groups written. Flush is called on dst to finalize each row group.
+// CopyAsRowGroups copies row groups to dst from src and flush a rowgroup per rowGroupNumCount read.
+// It returns the total number of rows copied and the number of row groups written.
+// Flush is called on dst to finalize each row group.
 func CopyAsRowGroups(dst RowWriterFlusher, src parquet.RowReader, rowGroupNumCount int) (total uint64, rowGroupCount uint64, err error) {
 	if rowGroupNumCount <= 0 {
 		panic("rowGroupNumCount must be positive")
