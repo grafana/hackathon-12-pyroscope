@@ -3,6 +3,9 @@ on:
   schedule:
     - cron: '13 1 * * *'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'examples/**'
 
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.
