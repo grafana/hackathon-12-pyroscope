@@ -3,8 +3,20 @@ on:
   push:
     branches:
       - main
-      - r[0-9]+ # Trigger builds after a push to weekly branches
+      - r[0-9]+ 
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '.golangci.yml'
   pull_request:
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '.golangci.yml'
 
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.

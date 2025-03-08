@@ -37,6 +37,7 @@ if [[ "$CURRENT_DIR" != "pyroscope" ]]; then
 fi
 
 ITERATIONS="${1:-6}"
+BENCH="${2:-.}"
 
 # check git status
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -85,14 +86,14 @@ do
 	set -o pipefail # including when we're piping things
 	echo "bench ${i} on ${GIT_BRANCH}"
 
-	go test -bench=Ingester -run=XXX -short -benchmem \
+	go test -bench=${BENCH} -run=XXX -short -benchmem \
 		-memprofile=${BRANCH_DIR}/mem_${i}.prof \
 		-cpuprofile=${BRANCH_DIR}/cpu_${i}.prof \
 		./pkg/ingester | tee -a $BRANCH_DIR/bench.txt
 
 	eval git checkout main
 	echo "bench ${i} on main"
-	go test -bench=Ingester -run=XXX -short -benchmem \
+	go test -bench=${BENCH} -run=XXX -short -benchmem \
 		-memprofile=${MAIN_DIR}/mem_${i}.prof \
 		-cpuprofile=${MAIN_DIR}/cpu_${i}.prof \
 		./pkg/ingester | tee -a $MAIN_DIR/bench.txt 

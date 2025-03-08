@@ -3,7 +3,21 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'cypress/**'
+      - 'webapp/**'
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
   pull_request:
+    paths:
+      - 'cypress/**'
+      - 'webapp/**'
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
 
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.

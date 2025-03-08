@@ -3,38 +3,39 @@ package ingester
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
-	"os"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
+	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/user"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/validation"
-	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/go-kit/log"
 )
 
 // mockLimits implements the Limits interface for testing
 type mockLimits struct {
-	maxSeriesPerUser        int
-	maxLabelNamesPerSeries  int
+	maxSeriesPerUser       int
+	maxLabelNamesPerSeries int
 }
 
-func (m *mockLimits) MaxSeriesPerUser(_ string) int { return m.maxSeriesPerUser }
-func (m *mockLimits) MaxLabelNamesPerSeries(_ string) int { return m.maxLabelNamesPerSeries }
-func (m *mockLimits) MaxLocalSeriesPerUser(_ string) int { return m.maxSeriesPerUser }
-func (m *mockLimits) MaxLocalSeriesPerMetric(_ string) int { return m.maxSeriesPerUser }
-func (m *mockLimits) MaxLocalSeriesPerTenant(_ string) int { return m.maxSeriesPerUser }
-func (m *mockLimits) MaxGlobalSeriesPerUser(_ string) int { return m.maxSeriesPerUser }
+func (m *mockLimits) MaxSeriesPerUser(_ string) int         { return m.maxSeriesPerUser }
+func (m *mockLimits) MaxLabelNamesPerSeries(_ string) int   { return m.maxLabelNamesPerSeries }
+func (m *mockLimits) MaxLocalSeriesPerUser(_ string) int    { return m.maxSeriesPerUser }
+func (m *mockLimits) MaxLocalSeriesPerMetric(_ string) int  { return m.maxSeriesPerUser }
+func (m *mockLimits) MaxLocalSeriesPerTenant(_ string) int  { return m.maxSeriesPerUser }
+func (m *mockLimits) MaxGlobalSeriesPerUser(_ string) int   { return m.maxSeriesPerUser }
 func (m *mockLimits) MaxGlobalSeriesPerMetric(_ string) int { return m.maxSeriesPerUser }
 func (m *mockLimits) MaxGlobalSeriesPerTenant(_ string) int { return m.maxSeriesPerUser }
 func (m *mockLimits) DistributorUsageGroups(_ string) *validation.UsageGroupConfig {
@@ -56,19 +57,19 @@ func setupTestIngester(b *testing.B, ctx context.Context) (*Ingester, error) {
 			},
 			ReplicationFactor: 1,
 		},
-		NumTokens:  1,
-		HeartbeatPeriod: 5 * time.Second,
-		ObservePeriod: 0 * time.Second,
-		JoinAfter: 0 * time.Second,
+		NumTokens:        1,
+		HeartbeatPeriod:  5 * time.Second,
+		ObservePeriod:    0 * time.Second,
+		JoinAfter:        0 * time.Second,
 		MinReadyDuration: 0 * time.Second,
-		FinalSleep: 0,
-		ID: "localhost",
-		Addr: "127.0.0.1",
-		Zone: "localhost",
+		FinalSleep:       0,
+		ID:               "localhost",
+		Addr:             "127.0.0.1",
+		Zone:             "localhost",
 	}
 
 	limits := &mockLimits{
-		maxSeriesPerUser: 1000000,
+		maxSeriesPerUser:       1000000,
 		maxLabelNamesPerSeries: 100,
 	}
 
@@ -100,7 +101,7 @@ func setupTestIngester(b *testing.B, ctx context.Context) (*Ingester, error) {
 func generateTestProfile() []byte {
 	// Create a simple profile for testing
 	profile := &profilev1.Profile{
-		StringTable: []string{"", "samples", "count", "function", "main"},  // Add StringTable
+		StringTable: []string{"", "samples", "count", "function", "main"}, // Add StringTable
 		SampleType: []*profilev1.ValueType{
 			{
 				Type: 1, // Index into StringTable
@@ -125,20 +126,20 @@ func generateTestProfile() []byte {
 				Line: []*profilev1.Line{
 					{
 						FunctionId: 1,
-						Line:      1,
+						Line:       1,
 					},
 				},
 			},
 		},
 		Function: []*profilev1.Function{
 			{
-				Id:       1,
-				Name:     4, // Index into StringTable for "main"
+				Id:         1,
+				Name:       4, // Index into StringTable for "main"
 				SystemName: 4, // Index into StringTable for "main"
-				Filename: 4, // Index into StringTable for "main"
+				Filename:   4, // Index into StringTable for "main"
 			},
 		},
-		TimeNanos: time.Now().UnixNano(),
+		TimeNanos:     time.Now().UnixNano(),
 		DurationNanos: int64(time.Second),
 		PeriodType: &profilev1.ValueType{
 			Type: 1, // Index into StringTable
@@ -146,7 +147,7 @@ func generateTestProfile() []byte {
 		},
 		Period: 100000000, // 100ms in nanoseconds
 	}
-	
+
 	data, _ := profile.MarshalVT()
 	return data
 }
@@ -158,7 +159,7 @@ func generateLabels(cardinality int) []*typesv1.LabelPair {
 		Name:  "service",
 		Value: "test",
 	})
-	
+
 	// Add additional labels
 	for i := 0; i < cardinality-1; i++ {
 		labels = append(labels, &typesv1.LabelPair{
@@ -183,7 +184,7 @@ func BenchmarkIngester_Push(b *testing.B) {
 	if err := services.StartAndAwaitRunning(ctx, ing); err != nil {
 		b.Fatal(err)
 	}
-	
+
 	// Create a cleanup function that properly stops the ingester
 	defer func() {
 		if err := services.StopAndAwaitTerminated(ctx, ing); err != nil {
@@ -287,7 +288,7 @@ func BenchmarkIngester_Flush(b *testing.B) {
 // 3. Many production environments use extensive labeling for better observability
 func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 	cardinalities := []int{1, 10, 20, 50, 100, 200, 500, 1000}
-	
+
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
 			ctx := user.InjectOrgID(context.Background(), "test")
@@ -309,7 +310,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 
 			profile := generateTestProfile()
 			labels := generateLabels(cardinality)
-			
+
 			req := connect.NewRequest(&pushv1.PushRequest{
 				Series: []*pushv1.RawProfileSeries{
 					{
@@ -344,7 +345,7 @@ func BenchmarkIngester_Push_LabelCardinality(b *testing.B) {
 // 3. Understanding this relationship helps in capacity planning and setting limits
 func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 	cardinalities := []int{1, 10, 20, 50, 100, 200, 500, 1000}
-	
+
 	for _, cardinality := range cardinalities {
 		b.Run(fmt.Sprintf("labels_%d", cardinality), func(b *testing.B) {
 			ctx := user.InjectOrgID(context.Background(), "test")
@@ -367,7 +368,7 @@ func BenchmarkIngester_Flush_LabelCardinality(b *testing.B) {
 			// Push data with different label cardinalities
 			profile := generateTestProfile()
 			labels := generateLabels(cardinality)
-			
+
 			// Push multiple samples to ensure we have enough data to make the flush meaningful
 			for i := 0; i < 100; i++ {
 				pushReq := connect.NewRequest(&pushv1.PushRequest{
@@ -450,7 +451,7 @@ func generateTestProfileWithSize(targetSizeBytes int) []byte {
 			Line: []*profilev1.Line{
 				{
 					FunctionId: uint64(i + 1),
-					Line:      int64(i + 1),
+					Line:       int64(i + 1),
 				},
 			},
 		})
@@ -483,14 +484,14 @@ func generateTestProfileWithSize(targetSizeBytes int) []byte {
 // 2. Large profiles can impact memory usage and processing time
 // 3. Understanding size-based performance helps in capacity planning
 func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
-	sizes := []int{	
-		100 * 1024,     // 100KB
-		500 * 1024,     // 500KB
-		1000 * 1024,    // 1MB
-		2000 * 1024,    // 2MB
-		3000 * 1024,    // 3MB
-		4000 * 1024,    // 4MB
-		5000 * 1024,    // 5MB		
+	sizes := []int{ // these sizes are chosen based on an actual 3mb CPU profile
+		100 * 1024,  // 100KB
+		500 * 1024,  // 500KB
+		1000 * 1024, // 1MB
+		2000 * 1024, // 2MB
+		3000 * 1024, // 3MB
+		4000 * 1024, // 4MB
+		5000 * 1024, // 5MB
 	}
 
 	for _, size := range sizes {
@@ -550,4 +551,4 @@ func BenchmarkIngester_Push_ProfileSize(b *testing.B) {
 			}
 		})
 	}
-} 
+}
