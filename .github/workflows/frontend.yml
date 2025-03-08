@@ -3,7 +3,19 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'webapp/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.eslintrc.js'
+      - 'tsconfig.json'
   pull_request:
+    paths:
+      - 'webapp/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.eslintrc.js'
+      - 'tsconfig.json'
 
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.
