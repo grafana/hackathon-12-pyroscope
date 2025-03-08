@@ -29,6 +29,8 @@ func CopyAsRowGroups(dst RowWriterFlusher, src parquet.RowReader, rowGroupNumCou
 			buffer[i] = make([]parquet.Value, 0, numCols)
 		}
 	} else {
+		// If we didn't initialize the buffer elements to nil in the non-schema case,
+		// we might end up with uninitialized or garbage values in the buffer.
 		for i := range buffer {
 			buffer[i] = nil
 		}
