@@ -14,7 +14,7 @@ import (
 // defaultRowBufferSize defines the baseline number of rows to buffer in memory
 // per read/write iteration. Increasing this value can improve throughput by
 // reducing the number of read/write calls (the Parquet-Go library default is very small).
-const defaultRowBufferSize = 8192
+const defaultRowBufferSize = 4096
 
 var (
 	_ parquet.RowReader          = (*emptyRowReader)(nil)
