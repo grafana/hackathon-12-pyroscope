@@ -11,8 +11,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
-// defaultRowBufferSize defines the baseline number of rows to buffer in memory 
-// per read/write iteration. Increasing this value can improve throughput by 
+// defaultRowBufferSize defines the baseline number of rows to buffer in memory
+// per read/write iteration. Increasing this value can improve throughput by
 // reducing the number of read/write calls (the Parquet-Go library default is very small).
 const defaultRowBufferSize = 8192
 

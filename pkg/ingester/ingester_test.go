@@ -20,6 +20,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/oklog/ulid"
+
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -28,7 +30,6 @@ import (
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/oklog/ulid"
 )
 
 func defaultIngesterTestConfig(t testing.TB) Config {
@@ -126,7 +127,7 @@ func Test_EvictBlock(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	ctx := phlarecontext.WithLogger(context.Background(), logger)
 	ctx = phlarecontext.WithRegistry(ctx, reg)
-	
+
 	fs, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend: client.Filesystem,
@@ -174,7 +175,7 @@ func Test_ServiceLifecycle(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	ctx := phlarecontext.WithLogger(context.Background(), logger)
 	ctx = phlarecontext.WithRegistry(ctx, reg)
-	
+
 	fs, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend: client.Filesystem,
@@ -208,7 +209,7 @@ func Test_GetOrCreateInstanceErrors(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	ctx := phlarecontext.WithLogger(context.Background(), logger)
 	ctx = phlarecontext.WithRegistry(ctx, reg)
-	
+
 	fs, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend: client.Filesystem,
@@ -257,7 +258,7 @@ func Test_ForInstanceHelpers(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	ctx := phlarecontext.WithLogger(context.Background(), logger)
 	ctx = phlarecontext.WithRegistry(ctx, reg)
-	
+
 	fs, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend: client.Filesystem,
