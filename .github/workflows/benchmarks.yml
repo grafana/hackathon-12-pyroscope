@@ -3,7 +3,7 @@ name: Differential Benchmarks
 on:
   pull_request:
     paths:
-    - '.github/workflows/**'
+    - '.github/workflows/benchmarks.yml'
     - 'pkg/ingester/**'
     - 'pkg/phlaredb/**'
     - 'pkg/parquet/**'
