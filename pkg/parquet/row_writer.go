@@ -21,99 +21,67 @@ func CopyAsRowGroups(dst RowWriterFlusher, src parquet.RowReader, rowGroupNumCou
 	if rowGroupNumCount <= 0 {
 		panic("rowGroupNumCount must be positive")
 	}
-
-	// Determine buffer size: use a larger default batch size for efficiency, but
-	// don’t exceed the rowGroupNumCount (to avoid overly large allocations for small groups).
 	bufferSize := defaultRowBufferSize
 	if rowGroupNumCount < bufferSize {
 		bufferSize = rowGroupNumCount
 	}
-
-	// Preallocate a slice of parquet.Row to serve as our read buffer.
-	// Each parquet.Row is a slice of parquet.Value. To reduce allocations, we preallocate
-	// each row's Value slice to the schema's column count (if available).
 	var buffer = make([]parquet.Row, bufferSize)
 	if rrWithSchema, ok := src.(parquet.RowReaderWithSchema); ok {
-		// If source schema is known, preallocate each row with capacity for all columns.
 		numCols := len(rrWithSchema.Schema().Columns())
 		for i := range buffer {
 			buffer[i] = make([]parquet.Value, 0, numCols)
 		}
 	} else {
-		// Initialize each row as an empty slice for the reader to fill.
 		for i := range buffer {
 			buffer[i] = nil
 		}
 	}
 
-	currentGroupCount := 0
-
-	// Outer loop: process one row group at a time
+	var currentGroupCount int
 	for {
-		currentGroupCount = 0
-		// Inner loop: read until we reach rowGroupNumCount or run out of rows
-		for currentGroupCount < rowGroupNumCount {
-			// Limit the read batch to whichever is smaller: the buffer size or the remaining rows needed for this group.
-			rowsNeeded := rowGroupNumCount - currentGroupCount
-			batchSize := bufferSize
-			if rowsNeeded < batchSize {
-				batchSize = rowsNeeded
+		n, readErr := src.ReadRows(buffer[:bufferSize])
+		if readErr != nil && readErr != io.EOF {
+			return 0, 0, readErr
+		}
+		if n == 0 {
+			break
+		}
+		buffer := buffer[:n]
+		if currentGroupCount+n >= rowGroupNumCount {
+			batchSize := rowGroupNumCount - currentGroupCount
+			written, err := dst.WriteRows(buffer[:batchSize])
+			if err != nil {
+				return 0, 0, err
 			}
-
-			// Read up to batchSize rows from src into the buffer.
-			n, readErr := src.ReadRows(buffer[:batchSize])
-			if readErr != nil && readErr != io.EOF {
-				// Abort on a hard error
-				err = readErr
-				return
-			}
-			if n == 0 {
-				// No more rows to read (source exhausted)
-				break
-			}
-
-			// Write the rows that were read to the destination.
-			// Slice the buffer to the actual number of rows read (n).
-			rowsChunk := buffer[:n]
-			written, writeErr := dst.WriteRows(rowsChunk)
-			if writeErr != nil {
-				err = writeErr
-				return
-			}
+			buffer = buffer[batchSize:]
 			total += uint64(written)
-			currentGroupCount += written
-
-			// If we've reached EOF, break to flush the partial group.
+			if err := dst.Flush(); err != nil {
+				return 0, 0, err
+			}
+			rowGroupCount++
+			currentGroupCount = 0
+		}
+		if len(buffer) == 0 {
 			if readErr == io.EOF {
 				break
 			}
-			// If this row group is full, break to flush it.
-			if currentGroupCount >= rowGroupNumCount {
-				break
-			}
-			// Otherwise, loop to read more rows for this group.
+			continue
 		}
-
-		if currentGroupCount == 0 {
-			// No rows read in this iteration (source fully exhausted), exit outer loop.
+		written, err := dst.WriteRows(buffer)
+		if err != nil {
+			return 0, 0, err
+		}
+		total += uint64(written)
+		currentGroupCount += written
+		if readErr == io.EOF {
 			break
 		}
-
-		// Flush the current row group to output (finalizing it in the Parquet file).
-		flushErr := dst.Flush()
-		if flushErr != nil {
-			err = flushErr
-			return
+	}
+	if currentGroupCount > 0 {
+		if err := dst.Flush(); err != nil {
+			return 0, 0, err
 		}
 		rowGroupCount++
-
-		// If we ended due to EOF and the current group is smaller than the target count,
-		// that was the last group; break out of outer loop.
-		if currentGroupCount < rowGroupNumCount {
-			break
-		}
-		// Otherwise, continue to process the next group.
 	}
-
 	return
 }
